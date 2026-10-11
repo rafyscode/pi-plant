@@ -1,0 +1,28 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+vnv/
+venv/
+.venv/
+env/
+.env
+
+# Runtime temporary audio files (keep committed sound assets)
+*.wav
+!sounds/*.wav
+qr_code.png
+
+# Large offline models
+model/
+piper_model/
+*.zip
+
+# OS / Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log

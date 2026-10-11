@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Bias Flora — Companion Canvas</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <style>
+    :root {
+      --color-primary: #00E5FF;
+      --color-secondary: #005577;
+      --color-bg: #020d14;
+      --glow-opacity: 0.55;
+      --pulse-speed: 5s;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+    html, body {
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      background: #010406;
+      position: fixed;
+      inset: 0;
+      touch-action: none;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    #canvas-container {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle at 50% 50%, var(--color-bg) 0%, #000204 100%);
+      transition: background 0.6s ease;
+      overflow: hidden;
+    }
+
+    /* Fluid Glowing Orbs */
+    .orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(55px);
+      pointer-events: none;
+      opacity: var(--glow-opacity);
+      transition: background 0.5s ease, opacity 0.4s ease, transform 0.4s ease;
+      will-change: transform, opacity;
+    }
+    .orb-1 {
+      width: 85vw;
+      height: 85vw;
+      max-width: 500px;
+      max-height: 500px;
+      top: 15%;
+      left: 8%;
+      background: radial-gradient(circle, var(--color-primary) 0%, transparent 70%);
+      animation: floatOrb1 var(--pulse-speed) infinite alternate ease-in-out;
+    }
+    .orb-2 {
+      width: 80vw;
+      height: 80vw;
+      max-width: 480px;
+      max-height: 480px;
+      bottom: 15%;
+      right: 10%;
+      background: radial-gradient(circle, var(--color-secondary) 0%, transparent 70%);
+      animation: floatOrb2 calc(var(--pulse-speed) * 1.2) infinite alternate ease-in-out;
+    }
+    .orb-center {
+      width: 55vw;
+      height: 55vw;
+      max-width: 320px;
+      max-height: 320px;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: radial-gradient(circle, var(--color-primary) 0%, transparent 60%);
+      animation: pulseCenter var(--pulse-speed) infinite ease-in-out;
+    }
+
+    @keyframes floatOrb1 {
+      0% { transform: translate(0, 0) scale(0.92); }
+      100% { transform: translate(6vw, 10vh) scale(1.15); }
+    }
+    @keyframes floatOrb2 {
+      0% { transform: translate(0, 0) scale(1.12); }
+      100% { transform: translate(-8vw, -8vh) scale(0.88); }
+    }
+    @keyframes pulseCenter {
+      0%, 100% { transform: translate(-50%, -50%) scale(0.9); opacity: calc(var(--glow-opacity) * 0.8); }
+      50% { transform: translate(-50%, -50%) scale(1.25); opacity: calc(var(--glow-opacity) * 1.3); }
+    }
+
+    /* Intuitive Subtle Guidance in Active State */
+    .guide-zone {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 50%;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .guide-zone.top {
+      top: 0;
+      background: linear-gradient(to top, transparent, rgba(0, 255, 100, 0.05));
+    }
+    .guide-zone.bottom {
+      bottom: 0;
+      background: linear-gradient(to bottom, transparent, rgba(255, 0, 50, 0.05));
+    }
+    .guide-zone.active {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div id="canvas-container">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-center"></div>
+    <div id="guide-top" class="guide-zone top"></div>
+    <div id="guide-bottom" class="guide-zone bottom"></div>
+  </div>
+
+  <script>
+    // =========================================================================
+    // COLOR PALETTES
+    // =========================================================================
+    const Palettes = {
+      // 1. Normal state: Neutral Palette (Serene Cyan / Aqua)
+      neutral: {
+        primary: "#00E5FF",
+        secondary: "#005577",
+        bg: "#020f14",
+        opacity: "0.50",
+        speed: "6s"
+      },
+      // 2. Speech Detected: Brightens up!
+      speech: {
+        primary: "#55FFFF",
+        secondary: "#00BBDD",
+        bg: "#062230",
+        opacity: "0.95",
+        speed: "2.2s"
+      },
+      // 3. Active Mode (Wakeword Activated): Radiant Warm Yellow
+      active: {
+        primary: "#FFD700",
+        secondary: "#FF9900",
+        bg: "#241802",
+        opacity: "0.95",
+        speed: "1.6s"
+      },
+      // Feedback: Green (Positive / Swipe UP)
+      positive: {
+        primary: "#00FF66",
+        secondary: "#00AA44",
+        bg: "#021c0b",
+        opacity: "1.0",
+        speed: "1.8s"
+      },
+      // Feedback: Red (Negative / Swipe DOWN)
+      negative: {
+        primary: "#FF0033",
+        secondary: "#990011",
+        bg: "#260206",
+        opacity: "1.0",
+        speed: "1.2s"
+      }
+    };
+
+    const guideTop = document.getElementById("guide-top");
+    const guideBottom = document.getElementById("guide-bottom");
+
+    let currentState = 0; // 0=Normal, 1=Speech, 2=Active, 3=Reaction
+    let canInteract = false;
+
+    function applyPalette(pal) {
+      document.documentElement.style.setProperty("--color-primary", pal.primary);
+      document.documentElement.style.setProperty("--color-secondary", pal.secondary);
+      document.documentElement.style.setProperty("--color-bg", pal.bg);
+      document.documentElement.style.setProperty("--glow-opacity", pal.opacity);
+      document.documentElement.style.setProperty("--pulse-speed", pal.speed);
+    }
+
+    // Initialize in Normal state
+    applyPalette(Palettes.neutral);
+
+    // =========================================================================
+    // WEBSOCKET REAL-TIME SYNC
+    // =========================================================================
+    let ws = null;
+    function connectWS() {
+      const host = window.location.hostname || "192.168.1.106";
+      ws = new WebSocket(`ws://${host}:8765`);
+
+      ws.onopen = () => {
+        console.log("[WS] Connected to Sentient Plant");
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.event === "STATE_CHANGE") {
+            handleStateChange(data.state, data.level, data.sentiment);
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      };
+
+      ws.onclose = () => {
+        setTimeout(connectWS, 2000);
+      };
+    }
+
+    function sendSwipeEvent(tag) {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          action: "SWIPE",
+          tag: tag,
+          timestamp: Date.now()
+        }));
+      }
+    }
+
+    // =========================================================================
+    // STATE LOGIC
+    // =========================================================================
+    function handleStateChange(state, level, sentiment) {
+      currentState = state;
+
+      // 1. Normal state: Neutral palette
+      if (state === 0) {
+        canInteract = false;
+        guideTop.classList.remove("active");
+        guideBottom.classList.remove("active");
+        applyPalette(Palettes.neutral);
+      }
+      // 2. Speech detected: Screen brightens up!
+      else if (state === 1) {
+        canInteract = false;
+        guideTop.classList.remove("active");
+        guideBottom.classList.remove("active");
+        applyPalette(Palettes.speech);
+      }
+      // 3. Wakeword activated: Screen lights up in active palette (yellowish)
+      else if (state === 2) {
+        canInteract = true;
+        guideTop.classList.add("active");
+        guideBottom.classList.add("active");
+        applyPalette(Palettes.active);
+      }
+      // 4. Reaction state (from speech or swipe)
+      else if (state === 3) {
+        canInteract = false;
+        guideTop.classList.remove("active");
+        guideBottom.classList.remove("active");
+        if (sentiment === "positive" || level > 0) {
+          applyPalette(Palettes.positive);
+        } else if (sentiment === "negative" || level < 0) {
+          applyPalette(Palettes.negative);
+        } else {
+          applyPalette(Palettes.neutral);
+        }
+      }
+    }
+
+    // =========================================================================
+    // TOUCH GESTURE & TAP LOGIC (Ultra-Forgiving)
+    // =========================================================================
+    let touchStartY = 0;
+    let isTouching = false;
+
+    window.addEventListener("touchstart", (e) => {
+      if (e.touches.length > 0) {
+        touchStartY = e.touches[0].clientY;
+        isTouching = true;
+      }
+    }, { passive: true });
+
+    window.addEventListener("touchend", (e) => {
+      if (!isTouching) return;
+      isTouching = false;
+
+      const touchEndY = e.changedTouches[0].clientY;
+      const dy = touchEndY - touchStartY;
+      const screenMid = window.innerHeight / 2;
+
+      // Only allow gesture in Active state (State 2)
+      if (canInteract || currentState === 2) {
+        if (dy < -25) {
+          // Swiped UP -> Green / Positive
+          triggerInput("positive");
+        } else if (dy > 25) {
+          // Swiped DOWN -> Red / Negative
+          triggerInput("negative");
+        } else {
+          // Tapped without dragging: top half = positive, bottom half = negative
+          if (touchStartY < screenMid) {
+            triggerInput("positive");
+          } else {
+            triggerInput("negative");
+          }
+        }
+      }
+    }, { passive: true });
+
+    // Desktop browser mouse support
+    let mouseStartY = 0;
+    let isMouseDown = false;
+    window.addEventListener("mousedown", (e) => {
+      mouseStartY = e.clientY;
+      isMouseDown = true;
+    });
+    window.addEventListener("mouseup", (e) => {
+      if (!isMouseDown) return;
+      isMouseDown = false;
+      const dy = e.clientY - mouseStartY;
+      if (canInteract || currentState === 2) {
+        if (dy < -25 || (Math.abs(dy) <= 25 && mouseStartY < window.innerHeight / 2)) {
+          triggerInput("positive");
+        } else {
+          triggerInput("negative");
+        }
+      }
+    });
+
+    function triggerInput(tag) {
+      if (navigator.vibrate) {
+        navigator.vibrate(tag === "positive" ? [30, 20, 50] : [50, 30, 80]);
+      }
+
+      // 1. Immediately change screen to Green or Red
+      canInteract = false;
+      guideTop.classList.remove("active");
+      guideBottom.classList.remove("active");
+      applyPalette(tag === "positive" ? Palettes.positive : Palettes.negative);
+
+      // 2. Send input over WebSocket
+      sendSwipeEvent(tag);
+
+      // 3. If plant does not transition within 2.5s, return smoothly to normal state
+      setTimeout(() => {
+        if (currentState !== 3) {
+          applyPalette(Palettes.neutral);
+        }
+      }, 2500);
+    }
+
+    connectWS();
+  </script>
+</body>
+</html>

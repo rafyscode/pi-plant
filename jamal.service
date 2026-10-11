@@ -1,0 +1,17 @@
+[Unit]
+Description=Sentient Plant (Bias Flora) State Machine
+After=network.target sound.target
+
+[Service]
+Type=simple
+User=pi-4b
+WorkingDirectory=/home/pi-4b/jamal_ai
+Environment="PATH=/home/pi-4b/jamal_ai/vnv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment="DISPLAY=:0"
+ExecStart=/home/pi-4b/jamal_ai/vnv/bin/python /home/pi-4b/jamal_ai/main.py
+Restart=always
+RestartSec=5
+SupplementaryGroups=audio plugdev input
+
+[Install]
+WantedBy=multi-user.target
